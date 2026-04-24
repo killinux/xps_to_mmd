@@ -160,14 +160,17 @@ def run_main_pipeline(xps_path, preset_name, report):
         results['8_5_apply_add_transform'] = {'status': 'warn', 'error': str(e)}
 
     # Phase physics — body / hair / breast
-    arm = find_armature()
-    set_active(arm)
     for op_name, key in [
         ('xps_generate_body_rigid_bodies', '9_body_rb'),
         ('xps_generate_hair_physics', '10_hair_rb'),
         ('xps_generate_breast_physics', '11_breast_rb'),
     ]:
         try:
+            # Re-set armature active before each op (createRigidBody changes active)
+            arm = find_armature()
+            if arm is None:
+                raise RuntimeError("no armature")
+            set_active(arm)
             getattr(bpy.ops.object, op_name)()
             # Count rigid bodies created with matching prefix
             prefixes = {

@@ -270,6 +270,15 @@ class OBJECT_OT_generate_body_rigid_bodies(bpy.types.Operator):
                 print(f"[xps_physics body] {name_j} 失败: {e}")
                 skipped.append(name_j)
 
+        # Restore armature as active (mmd_tools.createRigidBody changes it)
+        try:
+            bpy.ops.object.mode_set(mode='OBJECT')
+        except Exception:
+            pass
+        for o in bpy.context.view_layer.objects:
+            o.select_set(False)
+        arm.select_set(True)
+        bpy.context.view_layer.objects.active = arm
         try:
             bpy.ops.mmd_tools.build_rig()
         except Exception as e:
@@ -445,6 +454,15 @@ class OBJECT_OT_generate_hair_physics(bpy.types.Operator):
 
                 prev_rb = rb
 
+        # Restore armature as active (mmd_tools.createRigidBody changes it)
+        try:
+            bpy.ops.object.mode_set(mode='OBJECT')
+        except Exception:
+            pass
+        for o in bpy.context.view_layer.objects:
+            o.select_set(False)
+        arm.select_set(True)
+        bpy.context.view_layer.objects.active = arm
         try:
             bpy.ops.mmd_tools.build_rig()
         except Exception as e:
@@ -570,6 +588,15 @@ class OBJECT_OT_generate_breast_physics(bpy.types.Operator):
             except Exception as e:
                 print(f"[xps_physics breast] joint {b.name} 失败: {e}")
 
+        # Restore armature as active (mmd_tools.createRigidBody changes it)
+        try:
+            bpy.ops.object.mode_set(mode='OBJECT')
+        except Exception:
+            pass
+        for o in bpy.context.view_layer.objects:
+            o.select_set(False)
+        arm.select_set(True)
+        bpy.context.view_layer.objects.active = arm
         try:
             bpy.ops.mmd_tools.build_rig()
         except Exception as e:
