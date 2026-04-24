@@ -24,11 +24,11 @@ class OBJECT_OT_load_preset(bpy.types.Operator):
         return {'FINISHED'}
 
 class OBJECT_PT_skeleton_hierarchy(bpy.types.Panel):
-    bl_label = "Convert to MMD"
-    bl_idname = "OBJECT_PT_convert_to_mmd"
+    bl_label = "xps_to_mmd"
+    bl_idname = "OBJECT_PT_xps_to_mmd"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "Convert to MMD"
+    bl_category = "xps_to_mmd"
 
     def draw(self, context):
         layout = self.layout

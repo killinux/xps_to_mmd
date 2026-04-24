@@ -1,5 +1,5 @@
 bl_info = {
-    "name": "Convert to MMD",
+    "name": "xps_to_mmd",
     "author": "UITCIS(空想幻灵)",
     "version": (2, 4),
     "blender": (3, 0, 0),
