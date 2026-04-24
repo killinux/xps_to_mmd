@@ -1,6 +1,6 @@
 bl_info = {
     "name": "xps_to_mmd",
-    "author": "UITCIS(空想幻灵)",
+    "author": "哈哈",
     "version": (2, 4),
     "blender": (3, 0, 0),
     "location": "View3D > Sidebar",
