@@ -1,25 +1,10 @@
-"""Phase E — VMD playback: load PMX + VMD, compare wrist drift vs target."""
+"""Phase E — VMD playback: load PMX + VMD, compare wrist drift vs target.
+
+Sample all frames for one model into a dict, then do the same for the other,
+then compute diff. Avoids the scene-switching-during-frame-iteration problem
+where non-active scene frame_set may not re-evaluate the armature.
+"""
 import bpy
-
-
-def _load_vmd(vmd_path, armature, scale=0.08):
-    """mmd_tools.import_vmd into the armature's root."""
-    from mmd_tools.core.model import Model
-    root = Model.findRoot(armature)
-    if root is None:
-        raise RuntimeError("no MMD root")
-    # Select root for import
-    for o in bpy.context.view_layer.objects:
-        o.select_set(False)
-    root.select_set(True)
-    bpy.context.view_layer.objects.active = root
-    try:
-        bpy.ops.mmd_tools.import_vmd(filepath=vmd_path, scale=scale,
-                                     bone_mapper='PMX',
-                                     use_pose_mode=False)
-    except TypeError:
-        # older mmd_tools might not accept bone_mapper
-        bpy.ops.mmd_tools.import_vmd(filepath=vmd_path)
 
 
 def _world_bone_loc(arm, bone_name):
@@ -36,82 +21,118 @@ def _armature_height(arm):
     return max(zs) - min(zs)
 
 
+def _clean_scene():
+    for o in list(bpy.data.objects):
+        bpy.data.objects.remove(o, do_unlink=True)
+
+
+def _load_pmx_and_vmd(pmx, vmd):
+    """Clean scene, import pmx + vmd. Return armature."""
+    _clean_scene()
+    bpy.ops.mmd_tools.import_model(filepath=pmx, scale=0.08,
+                                   types={'MESH', 'ARMATURE'})
+    arm = next((o for o in bpy.data.objects if o.type == 'ARMATURE'), None)
+    if arm is None:
+        raise RuntimeError("no armature after PMX import")
+    from mmd_tools.core.model import Model
+    root = Model.findRoot(arm)
+    if root is None:
+        raise RuntimeError("no MMD root")
+    for o in bpy.context.view_layer.objects:
+        o.select_set(False)
+    root.select_set(True)
+    bpy.context.view_layer.objects.active = root
+    bpy.ops.mmd_tools.import_vmd(filepath=vmd, scale=0.08)
+    return arm
+
+
+def _sample_bones(arm, track_bones, frames):
+    """At each frame, record each tracked bone's head world position."""
+    out = {}
+    h = _armature_height(arm)
+    for f in frames:
+        bpy.context.scene.frame_set(f)
+        bpy.context.view_layer.update()
+        for b in track_bones:
+            pos = _world_bone_loc(arm, b)
+            if pos is not None:
+                out.setdefault(b, {})[f] = (pos.x, pos.y, pos.z)
+    return out, h
+
+
 def vmd_drift(our_pmx, target_pmx, vmd_path, frames=(0, 30, 60, 120, 180)):
-    """Load our+target PMX in separate scenes, apply same VMD, compare bone world pos."""
-    cur_scene = bpy.context.window.scene
+    """Load our+target PMX in sequence, apply same VMD, compare bone world pos."""
+    # Normalize bone names to handle both 左手首 and 手首.L forms
+    track_candidates = [
+        ('wrist_L', ['左手首', '手首.L']),
+        ('wrist_R', ['右手首', '手首.R']),
+        ('ankle_L', ['左足首', '足首.L']),
+        ('ankle_R', ['右足首', '足首.R']),
+    ]
 
-    def load_pair(pmx):
-        s = bpy.data.scenes.new(f"_tmp_{hash(pmx) % 10000}")
-        bpy.context.window.scene = s
-        bpy.ops.mmd_tools.import_model(filepath=pmx, scale=0.08,
-                                       types={'MESH', 'ARMATURE'})
-        arm = next((o for o in s.objects if o.type == 'ARMATURE'), None)
-        return s, arm
-
+    # 1) Our PMX
     try:
-        our_scene, our_arm = load_pair(our_pmx)
-        _load_vmd(vmd_path, our_arm)
+        our_arm = _load_pmx_and_vmd(our_pmx, vmd_path)
     except Exception as e:
-        bpy.context.window.scene = cur_scene
-        return {'error': f'our PMX/VMD load failed: {e}'}
+        return {'error': f'our PMX+VMD load failed: {e}'}
+    # Resolve bone names per armature
+    def resolve(arm):
+        mapped = {}
+        for alias, cands in track_candidates:
+            for c in cands:
+                if c in arm.data.bones:
+                    mapped[alias] = c
+                    break
+        return mapped
+    our_bones = resolve(our_arm)
+    our_sample, our_h = _sample_bones(our_arm, list(our_bones.values()), frames)
 
+    # 2) Target PMX (clean + reload)
     try:
-        tgt_scene, tgt_arm = load_pair(target_pmx)
-        _load_vmd(vmd_path, tgt_arm)
+        tgt_arm = _load_pmx_and_vmd(target_pmx, vmd_path)
     except Exception as e:
-        bpy.context.window.scene = cur_scene
-        bpy.data.scenes.remove(our_scene)
-        return {'error': f'target PMX/VMD load failed: {e}'}
+        return {'error': f'target PMX+VMD load failed: {e}'}
+    tgt_bones = resolve(tgt_arm)
+    tgt_sample, tgt_h = _sample_bones(tgt_arm, list(tgt_bones.values()), frames)
 
-    our_h = _armature_height(our_arm)
-    tgt_h = _armature_height(tgt_arm)
-
-    track_bones = ['左手首', '右手首', '左足首', '右足首']
+    # Compute drift per alias per frame
     samples = []
     max_drift_ratio = 0.0
-    for f in frames:
-        # ours
-        bpy.context.window.scene = our_scene
-        our_scene.frame_set(f)
-        for o in our_scene.objects:
-            o.update_tag(refresh={'OBJECT'})
-        bpy.context.view_layer.update()
-        ours_pos = {b: _world_bone_loc(our_arm, b) for b in track_bones}
-        # target
-        bpy.context.window.scene = tgt_scene
-        tgt_scene.frame_set(f)
-        for o in tgt_scene.objects:
-            o.update_tag(refresh={'OBJECT'})
-        bpy.context.view_layer.update()
-        tgt_pos = {b: _world_bone_loc(tgt_arm, b) for b in track_bones}
-
-        for b in track_bones:
-            op = ours_pos.get(b)
-            tp = tgt_pos.get(b)
+    max_wrist_ratio = 0.0
+    for alias, _ in track_candidates:
+        our_name = our_bones.get(alias)
+        tgt_name = tgt_bones.get(alias)
+        if not our_name or not tgt_name:
+            continue
+        for f in frames:
+            op = our_sample.get(our_name, {}).get(f)
+            tp = tgt_sample.get(tgt_name, {}).get(f)
             if op is None or tp is None:
                 continue
-            drift = (op - tp).length
+            dx = op[0] - tp[0]
+            dy = op[1] - tp[1]
+            dz = op[2] - tp[2]
+            drift = (dx * dx + dy * dy + dz * dz) ** 0.5
             ratio = drift / max(our_h, tgt_h, 1e-6)
             if ratio > max_drift_ratio:
                 max_drift_ratio = ratio
+            if 'wrist' in alias and ratio > max_wrist_ratio:
+                max_wrist_ratio = ratio
             samples.append({
-                'frame': f, 'bone': b,
+                'alias': alias,
+                'our_bone': our_name,
+                'target_bone': tgt_name,
+                'frame': f,
                 'drift_m': round(drift, 4),
                 'ratio': round(ratio, 4),
             })
-
-    # Cleanup
-    bpy.context.window.scene = cur_scene
-    bpy.data.scenes.remove(our_scene)
-    bpy.data.scenes.remove(tgt_scene)
-
-    wrist_samples = [s for s in samples if '手首' in s['bone']]
-    max_wrist_ratio = max((s['ratio'] for s in wrist_samples), default=0.0)
 
     return {
         'n_frames': len(frames),
         'our_armature_h_m': round(our_h, 3),
         'target_armature_h_m': round(tgt_h, 3),
+        'our_bone_names': our_bones,
+        'target_bone_names': tgt_bones,
         'max_drift_ratio': round(max_drift_ratio, 4),
         'max_wrist_drift_ratio': round(max_wrist_ratio, 4),
         'samples_worst': sorted(samples, key=lambda s: -s['ratio'])[:10],
