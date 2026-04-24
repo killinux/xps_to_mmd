@@ -125,6 +125,14 @@ def _mask_only_self(group_idx):
     return m
 
 
+def _mask_block_body_and_self(group_idx):
+    """Block body (group 0) AND own group to avoid Bullet overlap explosion."""
+    m = [False] * 16
+    m[0] = True
+    m[group_idx] = True
+    return m
+
+
 def _clear_by_prefix(prefixes):
     """Remove all rigid bodies / joints whose name starts with any of prefixes."""
     to_remove = []
@@ -421,7 +429,8 @@ class OBJECT_OT_generate_hair_physics(bpy.types.Operator):
                         size=size,
                         dynamics_type=mode,
                         collision_group_number=1,
-                        collision_group_mask=_mask_only_self(1),
+                        # Block body (overlap explosion) + self (intra-chain jitter)
+                        collision_group_mask=_mask_block_body_and_self(1),
                         name=name,
                         name_e=b.name,
                         bone=b.name,
