@@ -57,6 +57,24 @@ def run_main_pipeline(xps_path, preset_name, report):
     except Exception as e:
         results['1_rename'] = {'status': 'fail', 'error': str(e)}
 
+    # Step 1.5: L1 rest pose alignment (canonical) — reduces wrist drift in VMD playback
+    # Runs after rename so MMD-side bone names (腕.L/ひじ.L/手首.L or 左腕/左ひじ/左手首) exist
+    try:
+        bpy.ops.object.xps_fix_forearm_bend()
+        results['1_5_fix_forearm'] = {'status': 'ok'}
+    except Exception as e:
+        results['1_5_fix_forearm'] = {'status': 'warn', 'error': str(e)}
+    try:
+        bpy.ops.object.xps_align_arms_to_canonical()
+        results['1_6_align_arms'] = {'status': 'ok'}
+    except Exception as e:
+        results['1_6_align_arms'] = {'status': 'warn', 'error': str(e)}
+    try:
+        bpy.ops.object.xps_align_fingers_to_canonical()
+        results['1_7_align_fingers'] = {'status': 'ok'}
+    except Exception as e:
+        results['1_7_align_fingers'] = {'status': 'warn', 'error': str(e)}
+
     # Step 2: Complete missing bones (上半身3 auto-created here)
     try:
         bpy.ops.object.xps_complete_missing_bones()
