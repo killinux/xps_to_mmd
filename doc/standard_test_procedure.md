@@ -91,12 +91,12 @@ bpy.ops.mmd_tools.export_pmx(filepath='/Users/bytedance/Downloads/demo/<name>_au
 ```python
 bpy.ops.mmd_tools.import_model(filepath=TARGET_PMX_PATH)
 
-# 自动模型 X=-1.5，目标 X=+1.5（紧靠便于对比）
+# 自动模型 X=-4，目标 X=+4（清楚分开但近距离对比，MMD 单位）
 roots = [o for o in bpy.data.objects if o.type=='EMPTY' and o.mmd_type=='ROOT']
 for r in roots:
     arm = next((c for c in r.children if c.type=='ARMATURE'), None)
     nb = len(arm.data.bones) if arm else 0
-    r.location.x = -1.5 if nb < 200 else 1.5
+    r.location.x = -4.0 if nb < 200 else 4.0
 ```
 
 ### 7. 两边都加载相同 VMD
