@@ -218,9 +218,68 @@ to_rot:       X/Y/Z = [-angle, +angle]   (angle = 45° × index)
 
 ---
 
+## 付与親 (additional_transform) 系統
+
+MMD 的付与親是骨骼间旋转/位移联动的核心机制。一个骨骼设了付与親后，它的变换会自动跟随目标骨骼。
+
+### PMX 层（mmd_bone 属性）
+
+在 Blender 里通过 `pose_bone.mmd_bone` 设定：
+
+```python
+pb.mmd_bone.has_additional_rotation = True    # 启用旋转联动
+pb.mmd_bone.has_additional_location = False   # 通常不需要位移联动
+pb.mmd_bone.additional_transform_bone = "目标骨名"  # 跟随谁
+# additional_transform_bone_id 是内部索引，自动管理
+```
+
+### Blender 実装（_dummy_ / _shadow_ / TRANSFORM 三件套）
+
+PMX 的付与親在 Blender 里无法直接实现，mmd_tools 通过三个辅助结构模拟：
+
+```
+目標骨 (e.g. 左足) 旋转
+  │
+  ├─ _dummy_左足D    ← parent=左足, 无 constraint
+  │   通过 parent chain 自动继承左足的旋转
+  │
+  ├─ _shadow_左足D   ← parent=腰キャンセル.L (=左足D 的 parent)
+  │   COPY_TRANSFORMS ← _dummy_左足D
+  │   把 _dummy_ 的世界空間 transform 复制过来
+  │
+  └─ 左足D           ← parent=腰キャンセル.L
+      TRANSFORM ← _shadow_左足D (mix=ADD)
+      从 _shadow_ 读取旋转，ADD 到自身
+      → mesh 変形
+```
+
+**为什么需要三件套而不直接读目標骨**：Blender 的 constraint 求值顺序问题。如果 D 骨直接读目標骨，
+在某些更新顺序下会延迟一帧。通过 _dummy_(parent chain) → _shadow_(COPY) → TRANSFORM 的中介链
+可以保证同帧同步。
+
+### 哪些骨用了付与親
+
+| 骨骼 | 付与親 target | influence | 说明 |
+|------|-------------|-----------|------|
+| 左足D/右足D | 左足/右足 | 1.0 (rot) | D 骨完全复制主骨旋转 |
+| 左ひざD/右ひざD | 左ひざ/右ひざ | 1.0 (rot) | 同上 |
+| 左足首D/右足首D | 左足首/右足首 | 1.0 (rot) | 同上 |
+| 腰キャンセル.L/.R | 腰 | **-1.0** (rot) | 反向抵消腰旋转 |
+| 左腕捩1~3 | 左腕捩 | 0.25/0.50/0.75 (rot) | 分段跟随 twist |
+| 左手捩1~3 | 左手捩 | 0.25/0.50/0.75 (rot) | 同上 |
+
+### apply_additional_transform
+
+`bpy.ops.mmd_tools.apply_additional_transform()` 把 mmd_bone 属性展开为实际的 _dummy_/_shadow_/TRANSFORM constraint。
+Pipeline 里必须在所有骨骼创建完成后调用一次（one_click 的 step 8.5）。
+
+**不调用的后果**：mmd_bone 属性只是元数据，不会真正影响骨骼行为。D 骨不跟主骨旋转，腰キャンセル 不抵消腰旋转。
+
+---
+
 ## 7. _dummy_ 骨
 
-mmd_tools 的付与親约束实现机制。`_dummy_` 骨是付与親 target 骨的"影子 parent"。
+付与親系统的 parent chain 中继。`_dummy_` 骨通过 parent=目標骨 来继承旋转。
 
 | 骨骼 | parent | use_deform | constraint |
 |------|--------|-----------|-----------|
