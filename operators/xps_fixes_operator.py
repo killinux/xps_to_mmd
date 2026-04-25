@@ -855,13 +855,20 @@ _CLASSES = _CLASSES + (OBJECT_OT_transfer_unused_weights,)
 # ============================================================
 
 class OBJECT_OT_fix_bone_visibility(bpy.types.Operator):
-    """按 MMD 标准设置骨骼显示/隐藏（不影响权重和动画）"""
+    """按 MMD 付与親规则设置骨骼显示/隐藏（不影响权重和动画）。
+    有 additional_transform（付与親 slave）的骨隐藏，D 骨例外。"""
     bl_idname = "object.xps_fix_bone_visibility"
     bl_label = "修正骨骼显示"
     bl_options = {'REGISTER', 'UNDO'}
 
-    _SHOW = {'腕捩', '手捩', '目'}
-    _HIDE = {'肩C', '腕捩1', '腕捩2', '腕捩3', '手捩3'}
+    @staticmethod
+    def _is_d_bone(name):
+        base = name
+        for suffix in ('.L', '.R'):
+            if base.endswith(suffix):
+                base = base[:-len(suffix)]
+                break
+        return base.endswith('D')
 
     def execute(self, context):
         obj = context.active_object
@@ -872,22 +879,19 @@ class OBJECT_OT_fix_bone_visibility(bpy.types.Operator):
         shown = []
         hidden = []
         for bone in obj.data.bones:
-            base = bone.name
-            for suffix in ('.L', '.R'):
-                if base.endswith(suffix):
-                    base = base[:-len(suffix)]
-                    break
-            for prefix in ('左', '右'):
-                if base.startswith(prefix):
-                    base = base[len(prefix):]
-                    break
+            pb = obj.pose.bones.get(bone.name)
+            if not pb:
+                continue
+            mmd = pb.mmd_bone
+            is_slave = mmd.has_additional_rotation and mmd.additional_transform_bone
+            should_hide = is_slave and not self._is_d_bone(bone.name)
 
-            if base in self._SHOW and bone.hide:
-                bone.hide = False
-                shown.append(bone.name)
-            elif base in self._HIDE and not bone.hide:
+            if should_hide and not bone.hide:
                 bone.hide = True
                 hidden.append(bone.name)
+            elif not should_hide and bone.hide:
+                bone.hide = False
+                shown.append(bone.name)
 
         if shown:
             print(f"[fix_visibility] 显示: {shown}")
