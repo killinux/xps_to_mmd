@@ -95,7 +95,21 @@ def vmd_drift(our_pmx, target_pmx, vmd_path, frames=(0, 30, 60, 120, 180)):
     tgt_bones = resolve(tgt_arm)
     tgt_sample, tgt_h = _sample_bones(tgt_arm, list(tgt_bones.values()), frames)
 
-    # Compute drift per alias per frame
+    # Compute per-bone baseline offset at frame 0, then measure drift
+    # relative to baseline. This isolates dynamic (VMD-driven) error from
+    # rest-pose positional difference inherent in XPS→MMD geometry mismatch.
+    ref_frame = frames[0]
+    baseline = {}
+    for alias, _ in track_candidates:
+        our_name = our_bones.get(alias)
+        tgt_name = tgt_bones.get(alias)
+        if not our_name or not tgt_name:
+            continue
+        op0 = our_sample.get(our_name, {}).get(ref_frame)
+        tp0 = tgt_sample.get(tgt_name, {}).get(ref_frame)
+        if op0 and tp0:
+            baseline[alias] = (op0[0] - tp0[0], op0[1] - tp0[1], op0[2] - tp0[2])
+
     samples = []
     max_drift_ratio = 0.0
     max_wrist_ratio = 0.0
@@ -104,14 +118,15 @@ def vmd_drift(our_pmx, target_pmx, vmd_path, frames=(0, 30, 60, 120, 180)):
         tgt_name = tgt_bones.get(alias)
         if not our_name or not tgt_name:
             continue
+        bl = baseline.get(alias, (0, 0, 0))
         for f in frames:
             op = our_sample.get(our_name, {}).get(f)
             tp = tgt_sample.get(tgt_name, {}).get(f)
             if op is None or tp is None:
                 continue
-            dx = op[0] - tp[0]
-            dy = op[1] - tp[1]
-            dz = op[2] - tp[2]
+            dx = (op[0] - tp[0]) - bl[0]
+            dy = (op[1] - tp[1]) - bl[1]
+            dz = (op[2] - tp[2]) - bl[2]
             drift = (dx * dx + dy * dy + dz * dz) ** 0.5
             ratio = drift / max(our_h, tgt_h, 1e-6)
             if ratio > max_drift_ratio:
