@@ -656,8 +656,9 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
     bl_label = "转移 unused 骨权重"
     bl_options = {'REGISTER', 'UNDO'}
 
-    SKIP_PATTERNS = ('foretwist',)
+    SKIP_PATTERNS = ('foretwist', 'pelvis')
     CONTROL_BONES = ('全ての親', 'センター', 'グルーブ')
+    PELVIS_TO_LOWER = True
 
     def execute(self, context):
         obj = context.active_object
@@ -736,6 +737,31 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
                     mesh.vertex_groups.remove(vg)
                 else:
                     vg.remove(list(range(len(mesh.data.vertices))))
+
+        # pelvis 系 unused 骨直接映射到下半身（保留 XPS 原始权重）
+        lower_body_bone = obj.data.bones.get('下半身')
+        if lower_body_bone and self.PELVIS_TO_LOWER:
+            pelvis_patterns = ('pelvis', 'xtra08', 'xtra04', 'xtra02')
+            for mesh in mesh_objects:
+                lb_vg = mesh.vertex_groups.get('下半身')
+                if not lb_vg:
+                    lb_vg = mesh.vertex_groups.new(name='下半身')
+                for vg in list(mesh.vertex_groups):
+                    if not vg.name.startswith('unused'):
+                        continue
+                    if not any(p in vg.name.lower() for p in pelvis_patterns):
+                        continue
+                    n = 0
+                    for v in mesh.data.vertices:
+                        for g in v.groups:
+                            if g.group == vg.index and g.weight > 0.001:
+                                lb_vg.add([v.index], g.weight, 'ADD')
+                                n += 1
+                                break
+                    if n > 0:
+                        print(f"[xps_fixes] {vg.name} → 下半身 (direct): {n} verts")
+                        total_transferred += n
+                    mesh.vertex_groups.remove(vg)
 
         # 上半身/下半身 head 重合时的校正：
         # 上半身.head == 下半身.head，per-vertex-nearest 无法区分。
