@@ -85,8 +85,11 @@ def classify_helpers(armature_data, skeleton_map):
         if ancestor in thigh_names:
             result[name] = "preserve"
             continue
-        if ancestor in spine_names and abs(bone.head_local.x) >= 0.02:
-            result[name] = "preserve"
+        if ancestor in spine_names:
+            if abs(bone.head_local.x) >= 0.02:
+                result[name] = "preserve"  # breast/chest helper
+            else:
+                result[name] = "merge"  # intermediate spine segment — merge to nearest
             continue
 
         result[name] = "other"
@@ -99,7 +102,7 @@ def summary(classification):
     from collections import Counter
     counts = Counter(classification.values())
     lines = []
-    for cat in ("mapped", "twist", "pelvis", "preserve", "control", "ignore", "other"):
+    for cat in ("mapped", "twist", "pelvis", "preserve", "merge", "control", "ignore", "other"):
         n = counts.get(cat, 0)
         if n:
             names = [k for k, v in classification.items() if v == cat]

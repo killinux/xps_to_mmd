@@ -694,8 +694,8 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
         if cls:
             unused_bones = [
                 b for b in obj.data.bones
-                if cls.get(b.name) == 'other'
-                and b.name.startswith('unused')
+                if (cls.get(b.name) == 'other' and b.name.startswith('unused'))
+                or cls.get(b.name) == 'merge'
             ]
             skipped = [
                 b.name for b in obj.data.bones
@@ -770,7 +770,10 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
                 if n > 0:
                     print(f"[xps_fixes unused] {ubone.name} → per-vertex nearest: {n} verts")
                     total_transferred += n
-                if ubone.name.startswith('unused'):
+                # Remove VG for unused or merged bones (transfer weights away).
+                # Keep VG (just clear weights) for control bones (全ての親 etc.)
+                # since they're standard MMD bones that should exist with no weight.
+                if ubone.name.startswith('unused') or (cls and cls.get(ubone.name) == 'merge'):
                     mesh.vertex_groups.remove(vg)
                 else:
                     vg.remove(list(range(len(mesh.data.vertices))))
