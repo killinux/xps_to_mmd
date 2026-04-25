@@ -194,11 +194,11 @@ def _map_spine(chain, leg_idx, arm_idx, result):
     # arm fork bone = upper_body2 (chest level)
     result["upper_body2_bone"] = chain[arm_idx_eff].name
 
-    # Neck and head: above arm fork
+    # Neck and head: above arm fork (head = last, neck = second-to-last)
     above = chain[arm_idx_eff + 1:]
     if len(above) >= 2:
-        result["neck_bone"] = above[0].name
-        result["head_bone"] = above[1].name
+        result["head_bone"] = above[-1].name
+        result["neck_bone"] = above[-2].name
     elif len(above) == 1:
         result["head_bone"] = above[0].name
 
@@ -462,7 +462,7 @@ def _map_eyes(bones, head_name, result):
 
     # Find symmetric pairs by matching |X| and Z
     best_pair = None
-    best_score = -1
+    best_score = float('inf')
     for i, c1 in enumerate(candidates):
         if c1.head_local.x <= 0.005:
             continue
@@ -473,8 +473,9 @@ def _map_eyes(bones, head_name, result):
             dz = abs(c1.head_local.z - c2.head_local.z)
             dy = abs(c1.head_local.y - c2.head_local.y)
             if dx < 0.05 and dz < 0.05 and dy < 0.05:
-                score = -abs(c1.head_local.y) - abs(c2.head_local.y)
-                if score > best_score:
+                # Prefer the most forward pair (most negative Y = in front of face)
+                score = c1.head_local.y + c2.head_local.y
+                if score < best_score:
                     best_score = score
                     best_pair = (c1, c2)
 
