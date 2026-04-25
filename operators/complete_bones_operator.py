@@ -233,16 +233,32 @@ class OBJECT_OT_complete_missing_bones(bpy.types.Operator):
             },
 
             "下半身": {"head": Vector((0, upper_body_head.y, upper_body_head.z)), "tail": Vector((0, upper_body_head.y, upper_body_head.z - bone_length)), "parent": "腰", "use_connect": False},
+            # 腰キャンセル: 抵消腰旋转的控制骨 (付与親=腰, influence=-1.0 在 OBJECT mode 设置)
+            # parent=下半身, head 与 足.head 重合, tail 朝上
+            "腰キャンセル.L": {
+                "head": edit_bones["左足"].head.copy(),
+                "tail": edit_bones["左足"].head + Vector((0, 0, bone_length * 0.5)),
+                "parent": "下半身",
+                "use_connect": False,
+                "use_deform": True
+            },
+            "腰キャンセル.R": {
+                "head": edit_bones["右足"].head.copy(),
+                "tail": edit_bones["右足"].head + Vector((0, 0, bone_length * 0.5)),
+                "parent": "下半身",
+                "use_connect": False,
+                "use_deform": True
+            },
             "左足": {
                 "head": edit_bones["左足"].head,
                 "tail": edit_bones["左ひざ"].head,
-                "parent": "下半身",
+                "parent": "腰キャンセル.L",
                 "use_connect": False
             },
             "右足": {
                 "head": edit_bones["右足"].head,
                 "tail": edit_bones["右ひざ"].head,
-                "parent": "下半身",
+                "parent": "腰キャンセル.R",
                 "use_connect": False
             },
             "左ひざ": {
@@ -399,6 +415,25 @@ class OBJECT_OT_complete_missing_bones(bpy.types.Operator):
                         print(f"[xps_to_mmd] 腋窝 {shoulder}→{arm_bone}: {n} verts smoothed")
                 except Exception as e:
                     print(f"[xps_to_mmd] 腋窝平滑 {shoulder} 失败: {e}")
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        # 腰キャンセル 付与親设置 (必须在 OBJECT mode)
+        # 反向 -1.0 抵消腰旋转，让腿不跟着腰转
+        # 注意: 目标是"腰"(祖父) 而非"下半身"(父), 否则下半身大旋转会叠加导致腿 IK 抖动
+        bpy.ops.object.mode_set(mode='OBJECT')
+        for side in (".L", ".R"):
+            name = f"腰キャンセル{side}"
+            pb = obj.pose.bones.get(name)
+            if pb and obj.pose.bones.get("腰"):
+                pb.mmd_bone.has_additional_rotation = True
+                pb.mmd_bone.has_additional_location = False
+                pb.mmd_bone.additional_transform_bone = "腰"
+                pb.mmd_bone.additional_transform_influence = -1.0
+                pb.mmd_bone.is_tip = True
+                print(f"[xps_to_mmd] {name} 付与親=腰, influence=-1.0")
+            bone = obj.data.bones.get(name)
+            if bone:
+                bone.hide = True  # 控制骨, 用户不直接操作
         bpy.ops.object.mode_set(mode='EDIT')
 
         return {'FINISHED'}

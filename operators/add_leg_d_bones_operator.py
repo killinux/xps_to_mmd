@@ -24,6 +24,9 @@ class OBJECT_OT_add_leg_d_bones(bpy.types.Operator):
             bpy.ops.object.mode_set(mode='EDIT')
         
         edit_bones = armature.data.edit_bones
+        # 如果存在 腰キャンセル, D骨 parent 改为它 (与 足.L/.R 保持一致), 否则 fallback 到 下半身
+        hip_cancel_l = "腰キャンセル.L" if edit_bones.get("腰キャンセル.L") else "下半身"
+        hip_cancel_r = "腰キャンセル.R" if edit_bones.get("腰キャンセル.R") else "下半身"
         D_bone_properties = {
             # 右侧骨骼
             "右足D": {
@@ -31,7 +34,7 @@ class OBJECT_OT_add_leg_d_bones(bpy.types.Operator):
                 "head_position": edit_bones["右足"].head,
                 "tail_position": edit_bones["右足"].head+Vector((0, 0, 0.1)),
                 "use_connect": False,
-                "parent_name": "下半身",
+                "parent_name": hip_cancel_r,
                 "use_deform": True
             },
             "_dummy_右足D": {
@@ -44,10 +47,10 @@ class OBJECT_OT_add_leg_d_bones(bpy.types.Operator):
             },
             "_shadow_右足D": {
                 "original_bone": "右足",
-                "head_position": edit_bones["右足"].head,    
+                "head_position": edit_bones["右足"].head,
                 "tail_position": edit_bones["右足"].head+Vector((0, 0, 0.08)),
                 "use_connect": False,
-                "parent_name": "下半身",
+                "parent_name": hip_cancel_r,
                 "use_deform": False
             },
             "右ひざD": {
@@ -113,7 +116,7 @@ class OBJECT_OT_add_leg_d_bones(bpy.types.Operator):
                 "head_position": edit_bones["左足"].head,
                 "tail_position": edit_bones["左足"].head+Vector((0, 0, 0.1)),
                 "use_connect": False,
-                "parent_name": "下半身",
+                "parent_name": hip_cancel_l,
                 "use_deform": True
             },
             "_dummy_左足D": {
@@ -129,7 +132,7 @@ class OBJECT_OT_add_leg_d_bones(bpy.types.Operator):
                 "head_position": edit_bones["左足"].head,
                 "tail_position": edit_bones["左足"].head+Vector((0, 0, 0.08)),
                 "use_connect": False,
-                "parent_name": "下半身",
+                "parent_name": hip_cancel_l,
                 "use_deform": False
             },
             "左ひざD": {
