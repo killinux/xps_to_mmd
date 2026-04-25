@@ -656,7 +656,7 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
     bl_label = "转移 unused 骨权重"
     bl_options = {'REGISTER', 'UNDO'}
 
-    SKIP_PATTERNS = ('foretwist', 'pelvis', 'xtra08', 'xtra04', 'xtra02')
+    SKIP_PATTERNS = ('foretwist', 'pelvis', 'xtra08')
     CONTROL_BONES = ('全ての親', 'センター', 'グルーブ')
     PELVIS_TO_LOWER = True
 
@@ -741,7 +741,7 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
         # pelvis 系 unused 骨直接映射到下半身（保留 XPS 原始权重）
         lower_body_bone = obj.data.bones.get('下半身')
         if lower_body_bone and self.PELVIS_TO_LOWER:
-            pelvis_patterns = ('pelvis', 'xtra08', 'xtra04', 'xtra02')
+            pelvis_patterns = ('pelvis', 'xtra08')
             for mesh in mesh_objects:
                 lb_vg = mesh.vertex_groups.get('下半身')
                 if not lb_vg:
