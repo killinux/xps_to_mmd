@@ -737,6 +737,34 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
                 else:
                     vg.remove(list(range(len(mesh.data.vertices))))
 
+        # 上半身/下半身 head 重合时的校正：
+        # 上半身.head == 下半身.head，per-vertex-nearest 无法区分。
+        # 把 上半身 VG 中位于 下半身 区域（z < 上半身.head.z）的顶点移到 下半身。
+        lower_body = obj.data.bones.get('下半身')
+        upper_body = obj.data.bones.get('上半身')
+        if lower_body and upper_body:
+            ub_z = (obj.matrix_world @ upper_body.head_local).z
+            for mesh in mesh_objects:
+                ub_vg = mesh.vertex_groups.get('上半身')
+                lb_vg = mesh.vertex_groups.get('下半身')
+                if not ub_vg:
+                    continue
+                if not lb_vg:
+                    lb_vg = mesh.vertex_groups.new(name='下半身')
+                moved = 0
+                for v in mesh.data.vertices:
+                    for g in v.groups:
+                        if g.group == ub_vg.index and g.weight > 0.001:
+                            vp = mesh.matrix_world @ v.co
+                            if vp.z < ub_z - 0.01:
+                                lb_vg.add([v.index], g.weight, 'ADD')
+                                ub_vg.remove([v.index])
+                                moved += 1
+                            break
+                if moved:
+                    print(f"[xps_fixes] 上半身→下半身 (below spine): {moved} verts")
+                    total_transferred += moved
+
         self.report({'INFO'}, f"转移 {total_transferred} 顶点权重")
         return {'FINISHED'}
 
