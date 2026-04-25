@@ -5,9 +5,10 @@ import os
 from .common import find_armature, set_active
 
 
-def run_main_pipeline(xps_path, preset_name, report):
+def run_main_pipeline(xps_path, preset_name, report, auto_identify=False):
     """Run the full main pipeline from import through mmd_tools convert + physics.
-    Returns dict of state checkpoints for each step."""
+    Returns dict of state checkpoints for each step.
+    If auto_identify=True, uses skeleton_identifier instead of preset."""
     results = {}
 
     # Step 0: Import XPS
@@ -26,10 +27,14 @@ def run_main_pipeline(xps_path, preset_name, report):
         results['0_import'] = {'status': 'fail', 'error': str(e)}
         return results  # no point continuing
 
-    # Load preset
+    # Load preset or auto-identify
     try:
-        bpy.ops.object.xps_load_preset(preset_name=preset_name)
-        results['0_preset'] = {'status': 'ok', 'preset': preset_name}
+        if auto_identify:
+            bpy.ops.object.xps_auto_identify_skeleton()
+            results['0_preset'] = {'status': 'ok', 'preset': 'auto_identify'}
+        else:
+            bpy.ops.object.xps_load_preset(preset_name=preset_name)
+            results['0_preset'] = {'status': 'ok', 'preset': preset_name}
     except Exception as e:
         results['0_preset'] = {'status': 'fail', 'error': str(e)}
 

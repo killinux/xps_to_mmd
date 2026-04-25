@@ -660,6 +660,19 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
     CONTROL_BONES = ('全ての親', 'センター', 'グルーブ')
     PELVIS_TO_LOWER = True
 
+    def _auto_classify(self, armature):
+        """Try auto-classification; returns dict or None on failure."""
+        try:
+            from ..skeleton_identifier import identify_skeleton, clear_cache
+            from ..helper_classifier import classify_helpers
+            clear_cache()
+            smap = identify_skeleton(armature.data)
+            if sum(1 for v in smap.values() if v) < 5:
+                return None
+            return classify_helpers(armature.data, smap)
+        except Exception:
+            return None
+
     def execute(self, context):
         obj = context.active_object
         if not obj or obj.type != 'ARMATURE':
@@ -676,23 +689,43 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
             self.report({'ERROR'}, "未找到挂此 armature 的 mesh")
             return {'CANCELLED'}
 
-        unused_bones = [
-            b for b in obj.data.bones
-            if b.name.startswith('unused')
-            and not any(p in b.name.lower() for p in self.SKIP_PATTERNS)
-        ]
-        skipped = [
-            b.name for b in obj.data.bones
-            if b.name.startswith('unused')
-            and any(p in b.name.lower() for p in self.SKIP_PATTERNS)
-        ]
-        control_bones = [
-            b for b in obj.data.bones
-            if b.name in self.CONTROL_BONES
-        ]
+        cls = self._auto_classify(obj)
+
+        if cls:
+            unused_bones = [
+                b for b in obj.data.bones
+                if cls.get(b.name) == 'other'
+                and b.name.startswith('unused')
+            ]
+            skipped = [
+                b.name for b in obj.data.bones
+                if cls.get(b.name) in ('twist', 'preserve')
+            ]
+            control_bones = [
+                b for b in obj.data.bones
+                if b.name in self.CONTROL_BONES
+            ]
+            print(f"[xps_fixes] using auto-classifier")
+        else:
+            unused_bones = [
+                b for b in obj.data.bones
+                if b.name.startswith('unused')
+                and not any(p in b.name.lower() for p in self.SKIP_PATTERNS)
+            ]
+            skipped = [
+                b.name for b in obj.data.bones
+                if b.name.startswith('unused')
+                and any(p in b.name.lower() for p in self.SKIP_PATTERNS)
+            ]
+            control_bones = [
+                b for b in obj.data.bones
+                if b.name in self.CONTROL_BONES
+            ]
+            print(f"[xps_fixes] using hardcoded patterns (fallback)")
+
         bones_to_transfer = unused_bones + control_bones
         if skipped:
-            print(f"[xps_fixes unused] skipped (twist-related): {skipped}")
+            print(f"[xps_fixes unused] skipped (twist/preserve): {skipped}")
         if not bones_to_transfer:
             self.report({'INFO'}, "无需转移的骨骼")
             return {'FINISHED'}
@@ -738,18 +771,25 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
                 else:
                     vg.remove(list(range(len(mesh.data.vertices))))
 
-        # pelvis 系 unused 骨直接映射到下半身（保留 XPS 原始权重）
+        # pelvis 系骨直接映射到下半身（保留 XPS 原始权重）
         lower_body_bone = obj.data.bones.get('下半身')
-        if lower_body_bone and self.PELVIS_TO_LOWER:
-            pelvis_patterns = ('pelvis',)
+        if lower_body_bone:
+            if cls:
+                pelvis_bone_names = [
+                    b.name for b in obj.data.bones if cls.get(b.name) == 'pelvis'
+                ]
+            else:
+                pelvis_bone_names = [
+                    b.name for b in obj.data.bones
+                    if b.name.startswith('unused') and 'pelvis' in b.name.lower()
+                ]
             for mesh in mesh_objects:
                 lb_vg = mesh.vertex_groups.get('下半身')
                 if not lb_vg:
                     lb_vg = mesh.vertex_groups.new(name='下半身')
-                for vg in list(mesh.vertex_groups):
-                    if not vg.name.startswith('unused'):
-                        continue
-                    if not any(p in vg.name.lower() for p in pelvis_patterns):
+                for pname in pelvis_bone_names:
+                    vg = mesh.vertex_groups.get(pname)
+                    if not vg:
                         continue
                     n = 0
                     for v in mesh.data.vertices:
@@ -759,7 +799,7 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
                                 n += 1
                                 break
                     if n > 0:
-                        print(f"[xps_fixes] {vg.name} → 下半身 (direct): {n} verts")
+                        print(f"[xps_fixes] {pname} → 下半身 (direct): {n} verts")
                         total_transferred += n
                     mesh.vertex_groups.remove(vg)
 
