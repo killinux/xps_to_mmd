@@ -67,7 +67,10 @@ def _find_spine_chain(bones):
     if not center:
         center = sorted(bones, key=lambda b: abs(b.head_local.x))[:5]
 
-    top = max(center, key=lambda b: b.head_local.z)
+    # Prefer bones with children (head has many; leaf bones like 両目 don't)
+    center_with_children = [b for b in center if b.children]
+    pool = center_with_children if center_with_children else center
+    top = max(pool, key=lambda b: b.head_local.z)
 
     chain = []
     cur = top
@@ -82,13 +85,14 @@ def _find_fork_points(chain):
     """Find arm and leg fork indices on the spine chain.
 
     Returns (leg_fork_idx, arm_fork_idx).
+    Uses two passes: direct children first, then grandchildren.
     """
     if len(chain) < 2:
         return None, None
 
     all_z = [b.head_local.z for b in chain]
     height = max(all_z) - min(all_z)
-    x_thresh = height * 0.05 if height > 0 else 0.02
+    x_thresh = max(height * 0.01, 0.01)
 
     chain_set = {b.name for b in chain}
     forks = []
@@ -100,9 +104,20 @@ def _find_fork_points(chain):
         if left and right:
             forks.append(i)
 
+    if len(forks) < 2:
+        # Second pass: check grandchildren (legs may be 2 levels deep)
+        for i, bone in enumerate(chain):
+            if i in forks:
+                continue
+            off = [c for c in bone.children if c.name not in chain_set]
+            for oc in off:
+                gc_left = [c for c in oc.children if c.head_local.x > x_thresh]
+                gc_right = [c for c in oc.children if c.head_local.x < -x_thresh]
+                if gc_left and gc_right:
+                    forks.append(i)
+                    break
+
     if not forks:
-        # No clear forks — try looking for single-side laterals
-        # that might indicate a non-standard layout
         return None, None
 
     if len(forks) == 1:
@@ -192,13 +207,21 @@ def _map_arms(chain, arm_idx, result):
     chain_set = {b.name for b in chain}
     all_z = [b.head_local.z for b in chain]
     height = max(all_z) - min(all_z)
-    x_thresh = height * 0.05 if height > 0 else 0.02
+    x_thresh = max(height * 0.01, 0.01)
 
     off = [c for c in fork_bone.children if c.name not in chain_set]
     left = [c for c in off if c.head_local.x > x_thresh]
     right = [c for c in off if c.head_local.x < -x_thresh]
 
-    # Prefer the child that leads to a hand (finger fan-out)
+    # If no direct lateral children, check grandchildren
+    if not left or not right:
+        for oc in off:
+            for gc in oc.children:
+                if gc.head_local.x > x_thresh and not left:
+                    left = [oc]
+                elif gc.head_local.x < -x_thresh and not right:
+                    right = [oc]
+
     left_start = _pick_arm_start(left)
     right_start = _pick_arm_start(right)
 
@@ -350,11 +373,21 @@ def _map_legs(chain, leg_idx, result):
     chain_set = {b.name for b in chain}
     all_z = [b.head_local.z for b in chain]
     height = max(all_z) - min(all_z)
-    x_thresh = height * 0.05 if height > 0 else 0.02
+    x_thresh = max(height * 0.01, 0.01)
 
     off = [c for c in fork_bone.children if c.name not in chain_set]
     left = [c for c in off if c.head_local.x > x_thresh]
     right = [c for c in off if c.head_local.x < -x_thresh]
+
+    # If no direct lateral children, check grandchildren
+    if not left or not right:
+        for oc in off:
+            gc_left = [c for c in oc.children if c.head_local.x > x_thresh]
+            gc_right = [c for c in oc.children if c.head_local.x < -x_thresh]
+            if gc_left and not left:
+                left = gc_left
+            if gc_right and not right:
+                right = gc_right
 
     if left:
         best = max(left, key=lambda c: _subtree_depth(c))
