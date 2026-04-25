@@ -638,7 +638,6 @@ _CLASSES = (
     OBJECT_OT_fix_forearm_bend,
     OBJECT_OT_swap_twist_weights,
     OBJECT_OT_snap_misaligned_bones,
-    OBJECT_OT_transfer_unused_weights,
 )
 
 
@@ -718,6 +717,9 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
 
         self.report({'INFO'}, f"转移 {total_transferred} 顶点权重，清理 {len(unused_bones)} unused VG")
         return {'FINISHED'}
+
+
+_CLASSES = _CLASSES + (OBJECT_OT_transfer_unused_weights,)
 
 
 def register():
