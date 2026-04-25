@@ -95,24 +95,30 @@ def _find_fork_points(chain):
     x_thresh = max(height * 0.01, 0.01)
 
     chain_set = {b.name for b in chain}
+    min_depth = 3
     forks = []
 
     for i, bone in enumerate(chain):
+        if i >= len(chain) - 2:
+            continue
         off = [c for c in bone.children if c.name not in chain_set]
-        left = [c for c in off if c.head_local.x > x_thresh]
-        right = [c for c in off if c.head_local.x < -x_thresh]
+        left = [c for c in off
+                if c.head_local.x > x_thresh and _subtree_depth(c) >= min_depth]
+        right = [c for c in off
+                 if c.head_local.x < -x_thresh and _subtree_depth(c) >= min_depth]
         if left and right:
             forks.append(i)
 
     if len(forks) < 2:
-        # Second pass: check grandchildren (legs may be 2 levels deep)
         for i, bone in enumerate(chain):
-            if i in forks:
+            if i in forks or i >= len(chain) - 2:
                 continue
             off = [c for c in bone.children if c.name not in chain_set]
             for oc in off:
-                gc_left = [c for c in oc.children if c.head_local.x > x_thresh]
-                gc_right = [c for c in oc.children if c.head_local.x < -x_thresh]
+                gc_left = [c for c in oc.children
+                           if c.head_local.x > x_thresh and _subtree_depth(c) >= min_depth]
+                gc_right = [c for c in oc.children
+                            if c.head_local.x < -x_thresh and _subtree_depth(c) >= min_depth]
                 if gc_left and gc_right:
                     forks.append(i)
                     break
