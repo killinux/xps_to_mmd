@@ -35,22 +35,13 @@
 - **现象**: target 有首1 (2595 verts, parent=首)，位于首と頭之间
 - **修复方向**: 类似上半身1，用 `_split_chain_weights` 从首 split
 
-### [高] 上半身/上半身2 边界权重裂痕
-- **日期**: 2026-04-25 发现
-- **现象**: 姿态模式旋转上半身2时，上半身和上半身2的交界处 mesh 出现裂痕/不自然过渡
-- **根因推测**: `_split_chain_weights` 在上半身→上半身1 和 上半身2→上半身3 的 split 中，交界顶点的权重分配不够平滑。split 是线性 t 插值，在 t=0 和 t=1 的边界处权重会骤变（从 100% src 到 0%），没有混合过渡带
-- **修复方案**: 
-  1. **在 split 后加平滑过渡**：对交界区域的顶点做权重混合（类似腋窝 smooth 的 additive 方式），让 上半身 和 上半身1 / 上半身2 和 上半身3 在交界处有重叠权重
-  2. **或调整 split 算法**：把 t=0 附近的 DEAD_ZONE 扩大，让更多交界顶点保持在源骨上
-  3. **参考 spine middle rename 方案**：如果能直接 rename spine middle→上半身1，XPS 原始权重本身是平滑过渡的，不会有裂痕。这是根治方案，但需要重构 pipeline 顺序（见下条 TODO）
-- **验证方法**: 姿态模式下分别旋转上半身/上半身1/上半身2/上半身3，观察交界处 mesh 变形
+### [已修复] ~~上半身/上半身2 边界权重裂痕~~
+- **日期**: 2026-04-25 发现，2026-04-25 修复
+- **修复**: spine middle → 上半身1 在 step 1 rename（保留 XPS 原始权重），不再用 `_split_chain_weights` 重建
 
-### [中] spine middle → 上半身1 直接 rename（保留 XPS 原始权重）
-- **日期**: 2026-04-25 尝试+回退
-- **现象**: 当前方案先把 spine middle 在 step 1.4 per-vertex-nearest 散掉（4254 verts），再在 step 2 用 `_split_chain_weights` 从上半身 split 创建上半身1（5842 verts）。理想方案是直接 rename spine middle → 上半身1，保留 XPS 原始权重
-- **已尝试**: 在 STANDARD_MMD_BONES 加 `spine middle` 保护 + complete_bones 里 rename。cascade 失败：第一次 transfer 什么都不做→auto-classifier 第二次失败→twist scanner 抓到面部骨→上半身3 只有 547 verts
-- **修复方向**: 需要重构 pipeline 顺序，把 spine middle→上半身1 的 rename 放到 step 1（rename_to_mmd）里执行，而不是 step 2（complete_bones）。这样 step 1.4 transfer 时 spine middle 已经是上半身1（在白名单里），不会被散掉
-- **工作量**: 中等。需要在 rename_to_mmd 中加 spine middle 的特殊处理逻辑，或在 skeleton_identifier 中识别 spine middle 为 上半身1 候选
+### [已修复] ~~spine middle → 上半身1 直接 rename~~
+- **日期**: 2026-04-25 尝试+回退，2026-04-25 正确实现
+- **修复**: skeleton_identifier 检测 spine chain 有 2+ 段时识别第二段为 `upper_body1_bone`，bone_map 加 `upper_body1_bone → 上半身1`。Step 1 rename 后 step 1.4 不再散掉（STANDARD_MMD_BONES 保护），step 2 检测到已存在只修正 parent 链
 
 ### [低] 胸部骨骼映射 (boob → 乳奶)
 - **日期**: 2026-04-25 发现
@@ -82,6 +73,7 @@
 | 2026-04-25 | v1.6 | 足 残留 306/596 + 足D 275 | 足D: 581/871, 足: 0/0 |
 | 2026-04-25 | v1.6 | ひじ=0 排查 | 确认 XPS 源模型特征，非 bug |
 | 2026-04-25 | v1.7 | 指根骨缺失 | complete_bones: 人指０/中指０/薬指０/小指０ pass-through |
+| 2026-04-25 | v1.8 | 上半身/上半身2 边界裂痕 | spine middle→上半身1 在 step 1 rename, 保留 XPS 原始权重 |
 
 ## 版本变更概要
 
@@ -111,6 +103,11 @@
 ### v1.7 (2026-04-25)
 - 指根骨 8 个 (pass-through, 不切権重)
 - 总骨骼 189 (v1.3 时 179)
+
+### v1.8 (2026-04-25)
+- spine middle → 上半身1 在 step 1 rename，保留 XPS 原始権重 (4574 verts)
+- 修复上半身/上半身2 边界 mesh 裂痕
+- skeleton_identifier 新增 upper_body1_bone 检测
 
 ## Scale 踩坑记录
 
