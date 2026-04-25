@@ -29,6 +29,7 @@ from .operators import xps_fixes_operator
 from .operators import physics_operator
 from .operators import auto_identify_operator
 from .operators import check_bones_operator
+from .operators import one_click_operator
 from .tools import export_bones_info_operator
 from .tools import export_constraints_operator
 from .tools import merge_bones_operator
@@ -66,6 +67,7 @@ def register():
     physics_operator.register()
     auto_identify_operator.register()
     check_bones_operator.register()
+    one_click_operator.register()
     # 注册动态属性
     bones = preset_operator.get_bones_list()
     properties.register_properties(bones)
@@ -110,6 +112,7 @@ def unregister():
     bpy.utils.unregister_class(export_constraints_operator.OBJECT_OT_export_selected_bones_constraints)
     # v1 新增 operator
     try:
+        one_click_operator.unregister()
         check_bones_operator.unregister()
         auto_identify_operator.unregister()
         physics_operator.unregister()
