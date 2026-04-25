@@ -54,7 +54,9 @@ def _scan_candidates(armature, mesh_objects, seg_from_name, seg_to_name):
     if seg_len < 1e-5:
         return []
 
-    # 排除 MMD 标准骨和手指骨
+    # 排除手指骨（seg_to 的子骨链 + 有手指子骨的兄弟）
+    # 不排除所有有子骨的兄弟，否则 foretwist（有 foretwist1 子骨）会被误排除
+    finger_keywords = ('指', 'finger', 'Finger', 'carpal', 'Carpal')
     exclude = set()
     seg_to_bone = armature.data.bones.get(seg_to_name)
     if seg_to_bone:
@@ -64,7 +66,11 @@ def _scan_candidates(armature, mesh_objects, seg_from_name, seg_to_name):
             for sibling in seg_to_bone.parent.children:
                 if sibling.name in (seg_to_name, seg_from_name):
                     continue
-                if len(sibling.children) > 0:
+                has_finger_child = any(
+                    any(kw in c.name for kw in finger_keywords)
+                    for c in sibling.children_recursive
+                )
+                if has_finger_child:
                     exclude.add(sibling.name)
                     for child in sibling.children_recursive:
                         exclude.add(child.name)
