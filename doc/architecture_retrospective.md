@@ -182,7 +182,7 @@ Phase 3: 约束系统（不动骨位置）
   3.3  create_shoulder_p      → 肩P/肩C
   3.4  create_ik              → IK 链
   3.5  mmd_tools_convert      → apply_additional_transform
-  3.6  fix_visibility         → 付与親 slave → hide
+  3.6  (visibility)            → bone.hide 在各创建点 (3.1~3.3) 自动设置，非独立后处理步骤
   输出: 完整 MMD 模型
 
 Phase 4: 验证（只读）

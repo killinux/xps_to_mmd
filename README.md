@@ -2,7 +2,7 @@
 
 Blender 3.6 插件：自动将 XPS (XNA Lara) 模型转换为 MMD (MikuMikuDance) 格式。
 
-无需手动映射骨骼、无需参考 PMX 模型，一键完成从 XPS 导入到 PMX 导出的全流程。
+无需手动映射骨骼、无需参考 PMX 模型（当前仅 Inase/XNA Lara 完整验证），一键完成从 XPS 导入到 PMX 导出的全流程。
 
 ## 安装
 
@@ -33,7 +33,7 @@ Blender 3.6 插件：自动将 XPS (XNA Lara) 模型转换为 MMD (MikuMikuDance
 1. 点击面板顶部 **"0. 导入 XPS"** 导入 XPS 模型
 2. 选中导入的骨架（Armature）
 3. 点击 **"一键转换 XPS→MMD"**
-4. 等待 ~2 秒，16 步自动完成
+4. 等待 ~2 秒，pipeline 自动完成（步骤编号 0~8.5，含子步骤）
 
 转换完成后可直接用 mmd_tools 导出 PMX。
 
@@ -62,7 +62,7 @@ Blender 3.6 插件：自动将 XPS (XNA Lara) 模型转换为 MMD (MikuMikuDance
 
 ### Pipeline 步骤详解
 
-一键转换内部执行以下 16 步：
+一键转换内部执行以下步骤（编号 0~8.5，含子步骤）：
 
 ```
 Step 0     自动识别骨架        skeleton_identifier 拓扑+几何检测骨骼角色
@@ -135,7 +135,7 @@ MMD 的骨骼联动核心。在 Blender 中通过三件套模拟：
 | 腕捩1/2/3 | 腕捩 | 0.25/0.50/0.75 | 分段 twist |
 | 手捩1/2/3 | 手捩 | 0.25/0.50/0.75 | 分段 twist |
 
-骨骼显示规则：付与親 slave 骨自动隐藏（用户不直接操作），D 骨例外（主变形骨需可见）。
+骨骼显示规则：付与親 slave 骨在创建点设置 `bone.hide=True`（MMD 标准行为，用户不直接操作），D 骨例外（主变形骨需可见）。
 
 ## 项目结构
 
@@ -174,10 +174,10 @@ xps_to_mmd/
 
 ## 当前状态 (v1.8)
 
-- Pipeline: 16/16 步成功，~2 秒
+- Pipeline: 步骤 0~8.5 全部成功，~2 秒
 - 骨骼: 188 骨（172 显示 + 16 隐藏）
 - 验证: Inase VMD frame 80/120/200 姿态匹配
-- 测试: skeleton_identifier 3 模型通过，helper_classifier 19 项通过
+- 测试: skeleton_identifier 3 个离线构造骨架通过，helper_classifier 19 个 mock 分类断言通过
 
 ## TODO
 

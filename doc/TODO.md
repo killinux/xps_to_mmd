@@ -75,7 +75,7 @@
 | 2026-04-25 | v1.7 | 指根骨缺失 | complete_bones: 人指０/中指０/薬指０/小指０ pass-through |
 | 2026-04-25 | v1.8 | 上半身/上半身2 边界裂痕 | spine middle→上半身1 在 step 1 rename, 保留 XPS 原始权重 |
 | 2026-04-25 | v1.8 | pelvis→下半身 被 early return 跳过 | transfer_unused_weights 去掉 early return |
-| 2026-04-25 | v1.8 | 骨骼显示/隐藏不符 MMD 标准 | 新增 fix_bone_visibility operator (付与親 slave→hide, D骨例外) |
+| 2026-04-25 | v1.8 | 骨骼显示/隐藏不符 MMD 标准 | bone.hide 在创建点设置 (add_twist_bone, add_shoulder_p, complete_bones)，付与親 slave→hide, D骨例外 |
 
 ## 版本变更概要
 
@@ -104,14 +104,14 @@
 
 ### v1.7 (2026-04-25)
 - 指根骨 8 个 (pass-through, 不切権重)
-- 总骨骼 189 (v1.3 时 179)
+- 总骨骼 189 (v1.3 时 179)。注：v1.8 pipeline 产出 188 骨（移除 standalone visibility operator 后统计口径变化）
 
 ### v1.8 (2026-04-25)
 - spine middle → 上半身1 在 step 1 rename，保留 XPS 原始権重 (4574 verts)
 - 修复上半身/上半身2 边界 mesh 裂痕
 - skeleton_identifier 新增 upper_body1_bone 检测
 - 修复 pelvis→下半身 direct mapping 被 early return 跳过 (下半身 539→6892)
-- 新增骨骼显示修复按钮 (付与親 slave→hide, D骨例外, 见 mmd_bone_spec.md §11)
+- bone.hide 在创建点自动设置 (add_twist_bone, add_shoulder_p, complete_bones)，付与親 slave→hide, D骨例外 (见 mmd_bone_spec.md §11)
 
 ## Scale 踩坑记录
 

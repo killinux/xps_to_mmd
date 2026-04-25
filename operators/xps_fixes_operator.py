@@ -849,8 +849,6 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
 
 _CLASSES = _CLASSES + (OBJECT_OT_transfer_unused_weights,)
 
-_CLASSES = _CLASSES + ()
-
 
 def register():
     for cls in _CLASSES:

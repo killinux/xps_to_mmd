@@ -431,9 +431,9 @@ should_hide = is_slave and not is_d_bone
 | 目 | False | 主変形骨 |
 | _dummy_/_shadow_ | **True** | 系統骨、use_deform=False |
 
-### 操作方法
+### 设置方式
 
-Panel → 次标准骨骼管理 → XPS 専属修正 → "修正骨骼显示/隐藏"
+bone.hide 在 pipeline 创建点自动设置（add_twist_bone, add_shoulder_p, complete_bones），无独立按钮/operator。
 
 ---
 
