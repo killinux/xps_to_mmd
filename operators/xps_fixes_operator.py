@@ -648,12 +648,14 @@ _CLASSES = (
 class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
     """把 unused 前缀骨骼的顶点权重转移到最近的有效变形骨。
 
-    XPS extra 骨 (xtra07, foretwist 等) rename 后带 'unused' 前缀但保留
-    vertex weight。这些骨的 parent 往往是手臂/腿骨，动画时拉飞肩颈/躯干顶点。
+    跳过 foretwist 类骨骼（它们的权重由后续 twist operator 正确处理）。
+    只处理 xtra/pelvis/muscle 等非 twist 辅助骨。
     """
     bl_idname = "object.xps_transfer_unused_weights"
     bl_label = "转移 unused 骨权重"
     bl_options = {'REGISTER', 'UNDO'}
+
+    SKIP_PATTERNS = ('foretwist',)
 
     def execute(self, context):
         obj = context.active_object
@@ -671,9 +673,20 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
             self.report({'ERROR'}, "未找到挂此 armature 的 mesh")
             return {'CANCELLED'}
 
-        unused_bones = [b for b in obj.data.bones if b.name.startswith('unused')]
+        unused_bones = [
+            b for b in obj.data.bones
+            if b.name.startswith('unused')
+            and not any(p in b.name.lower() for p in self.SKIP_PATTERNS)
+        ]
+        skipped = [
+            b.name for b in obj.data.bones
+            if b.name.startswith('unused')
+            and any(p in b.name.lower() for p in self.SKIP_PATTERNS)
+        ]
+        if skipped:
+            print(f"[xps_fixes unused] skipped (twist-related): {skipped}")
         if not unused_bones:
-            self.report({'INFO'}, "无 unused 骨骼")
+            self.report({'INFO'}, "无需转移的 unused 骨骼")
             return {'FINISHED'}
 
         valid_deform_bones = [
