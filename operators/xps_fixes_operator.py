@@ -705,7 +705,7 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
                 b for b in obj.data.bones
                 if b.name in self.CONTROL_BONES
             ]
-            print(f"[xps_fixes] using auto-classifier")
+            print(f"\n[1.4 Transfer unused] 使用 auto-classifier")
         else:
             unused_bones = [
                 b for b in obj.data.bones
@@ -721,11 +721,15 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
                 b for b in obj.data.bones
                 if b.name in self.CONTROL_BONES
             ]
-            print(f"[xps_fixes] using hardcoded patterns (fallback)")
+            print(f"\n[1.4 Transfer unused] 使用硬编码 patterns (fallback)")
 
         bones_to_transfer = unused_bones + control_bones
         if skipped:
-            print(f"[xps_fixes unused] skipped (twist/preserve): {skipped}")
+            print(f"  跳过 (twist/preserve): {skipped}")
+        if unused_bones:
+            print(f"  待转移 (unused): {[b.name for b in unused_bones]}")
+        if control_bones:
+            print(f"  待转移 (control): {[b.name for b in control_bones]}")
         if not bones_to_transfer:
             self.report({'INFO'}, "无需转移的骨骼")
             return {'FINISHED'}
