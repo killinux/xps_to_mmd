@@ -74,6 +74,8 @@
 | 2026-04-25 | v1.6 | ひじ=0 排查 | 确认 XPS 源模型特征，非 bug |
 | 2026-04-25 | v1.7 | 指根骨缺失 | complete_bones: 人指０/中指０/薬指０/小指０ pass-through |
 | 2026-04-25 | v1.8 | 上半身/上半身2 边界裂痕 | spine middle→上半身1 在 step 1 rename, 保留 XPS 原始权重 |
+| 2026-04-25 | v1.8 | pelvis→下半身 被 early return 跳过 | transfer_unused_weights 去掉 early return |
+| 2026-04-25 | v1.8 | 骨骼显示/隐藏不符 MMD 标准 | 新增 fix_bone_visibility operator (付与親 slave→hide, D骨例外) |
 
 ## 版本变更概要
 
@@ -108,6 +110,8 @@
 - spine middle → 上半身1 在 step 1 rename，保留 XPS 原始権重 (4574 verts)
 - 修复上半身/上半身2 边界 mesh 裂痕
 - skeleton_identifier 新增 upper_body1_bone 检测
+- 修复 pelvis→下半身 direct mapping 被 early return 跳过 (下半身 539→6892)
+- 新增骨骼显示修复按钮 (付与親 slave→hide, D骨例外, 见 mmd_bone_spec.md §11)
 
 ## Scale 踩坑记录
 
