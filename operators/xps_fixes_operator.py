@@ -656,7 +656,7 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
     bl_label = "转移 unused 骨权重"
     bl_options = {'REGISTER', 'UNDO'}
 
-    SKIP_PATTERNS = ('foretwist', 'pelvis', 'xtra08', 'xtra04', 'xtra02', 'muscle_elbow')
+    SKIP_PATTERNS = ('foretwist', 'pelvis', 'xtra08', 'xtra04', 'xtra02', 'xtra07', 'muscle_elbow')
     CONTROL_BONES = ('全ての親', 'センター', 'グルーブ')
     PELVIS_TO_LOWER = True
 
