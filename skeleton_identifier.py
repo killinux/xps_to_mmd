@@ -67,10 +67,15 @@ def _find_spine_chain(bones):
     if not center:
         center = sorted(bones, key=lambda b: abs(b.head_local.x))[:5]
 
-    # Prefer bones with children (head has many; leaf bones like 両目 don't)
-    center_with_children = [b for b in center if b.children]
-    pool = center_with_children if center_with_children else center
-    top = max(pool, key=lambda b: b.head_local.z)
+    # The head bone has bilateral children (both +X and -X sides: eyes, jaw, etc.)
+    bilateral = [b for b in center
+                 if any(c.head_local.x > 0.01 for c in b.children)
+                 and any(c.head_local.x < -0.01 for c in b.children)]
+    if bilateral:
+        top = max(bilateral, key=lambda b: b.head_local.z)
+    else:
+        with_ch = [b for b in center if b.children]
+        top = max(with_ch or center, key=lambda b: b.head_local.z)
 
     chain = []
     cur = top
