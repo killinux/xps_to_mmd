@@ -291,13 +291,101 @@ class OBJECT_OT_add_twist_bone(bpy.types.Operator):
                         vg_arm.name = twist_name
                 print(f"[twist] Swap VG: {arm_name} <-> {twist_name}")
 
+        # Phase 5: PMXEditor 风格 twist 权重渐变
+        # 把腕/ひじ的权重按 t 位置分配到 5 个 anchor 骨上
+        DEAD_ZONE = 0.05
+        gradient_segments = [
+            ("腕", "ひじ", [("腕", 0.00), ("腕捩1", 0.25), ("腕捩2", 0.50), ("腕捩3", 0.75), ("腕捩", 1.00)]),
+            ("ひじ", "手首", [("ひじ", 0.00), ("手捩1", 0.25), ("手捩2", 0.50), ("手捩3", 0.75), ("手捩", 1.00)]),
+        ]
+        total_split = 0
+        for seg_from_base, seg_to_base, anchors_def in gradient_segments:
+            for side in ("左", "右"):
+                seg_from_name = side + seg_from_base
+                seg_to_name = side + seg_to_base
+                sf_bone = obj.data.bones.get(seg_from_name)
+                st_bone = obj.data.bones.get(seg_to_name)
+                if not sf_bone or not st_bone:
+                    continue
+                mw = obj.matrix_world
+                seg_head = mw @ sf_bone.head_local
+                seg_end = mw @ st_bone.head_local
+                seg = seg_end - seg_head
+                seg_len_sq = seg.length_squared
+                if seg_len_sq < 1e-9:
+                    continue
+
+                anchors = [(t, side + name) for name, t in anchors_def]
+                source_name = seg_from_name
+
+                for mesh in mesh_objects:
+                    src_vg = mesh.vertex_groups.get(source_name)
+                    if not src_vg:
+                        continue
+                    vgs = {}
+                    for _, bone_name in anchors:
+                        if bone_name not in mesh.vertex_groups:
+                            mesh.vertex_groups.new(name=bone_name)
+                        vgs[bone_name] = mesh.vertex_groups[bone_name]
+
+                    plans = []
+                    for v in mesh.data.vertices:
+                        src_w = next((g.weight for g in v.groups if g.group == src_vg.index), 0.0)
+                        if src_w <= 0:
+                            continue
+                        existing = {}
+                        for bone_name, vg in vgs.items():
+                            if bone_name == source_name:
+                                continue
+                            for g in v.groups:
+                                if g.group == vg.index:
+                                    existing[bone_name] = g.weight
+                                    break
+                        v_world = mesh.matrix_world @ v.co
+                        t = (v_world - seg_head).dot(seg) / seg_len_sq
+                        if t < DEAD_ZONE:
+                            continue
+                        t = max(0.0, min(1.0, t))
+                        # bracket
+                        n_lo, n_hi, k = anchors[0][1], anchors[-1][1], 1.0
+                        for ai in range(len(anchors) - 1):
+                            t_lo, name_lo = anchors[ai]
+                            t_hi, name_hi = anchors[ai + 1]
+                            if t_lo <= t <= t_hi:
+                                span = t_hi - t_lo
+                                k = (t - t_lo) / span if span > 0 else 0.0
+                                n_lo, n_hi = name_lo, name_hi
+                                break
+                        w_lo = src_w * (1.0 - k)
+                        w_hi = src_w * k
+                        plans.append((v.index, n_lo, w_lo, n_hi, w_hi, existing))
+
+                    for v_idx, n_lo, w_lo, n_hi, w_hi, existing in plans:
+                        if n_lo == source_name:
+                            if w_lo > 0:
+                                vgs[n_lo].add([v_idx], w_lo, 'REPLACE')
+                            else:
+                                src_vg.remove([v_idx])
+                        else:
+                            vgs[n_lo].add([v_idx], existing.get(n_lo, 0.0) + w_lo, 'REPLACE')
+                        if w_hi > 0:
+                            vgs[n_hi].add([v_idx], existing.get(n_hi, 0.0) + w_hi, 'REPLACE')
+                        if n_lo != source_name:
+                            src_vg.remove([v_idx])
+                        total_split += 1
+
+                if total_split > 0:
+                    print(f"[twist] gradient split {seg_from_name}→{seg_to_name}: done")
+
+        print(f"[twist] gradient split total: {total_split} verts")
+
         bpy.context.view_layer.objects.active = obj
         bpy.ops.object.xps_create_bone_group()
 
         n_renamed = len(renamed)
         for r in renamed:
             print(f"[twist] Renamed: {r}")
-        self.report({'INFO'}, f"成功拆分腕捩骨骼（renamed {n_renamed}，不切权重）")
+        self.report({'INFO'}, f"twist 完成（renamed {n_renamed}, gradient {total_split} verts）")
         return {'FINISHED'}
 
     def setup_constraints(self, obj):
