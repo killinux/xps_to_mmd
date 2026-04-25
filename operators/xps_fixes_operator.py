@@ -738,10 +738,6 @@ class OBJECT_OT_transfer_unused_weights(bpy.types.Operator):
             print(f"  待转移 (unused): {[b.name for b in unused_bones]}")
         if control_bones:
             print(f"  待转移 (control): {[b.name for b in control_bones]}")
-        if not bones_to_transfer:
-            self.report({'INFO'}, "无需转移的骨骼")
-            return {'FINISHED'}
-
         valid_deform_bones = [
             b for b in obj.data.bones
             if not b.name.startswith('unused')
