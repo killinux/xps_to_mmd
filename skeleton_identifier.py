@@ -425,7 +425,13 @@ def _map_legs(chain, leg_idx, result):
 def _assign_leg(start, is_left, result):
     """Trace leg chain and assign thigh/shin/foot/toe."""
     side = "left" if is_left else "right"
-    chain = _trace_limb_chain(start, max_depth=5)
+    chain = _trace_limb_chain(start, max_depth=6)
+
+    # Skip control bones (腰キャンセル) at chain start: head overlaps next bone
+    if len(chain) >= 2:
+        d = (chain[0].head_local - chain[1].head_local).length
+        if d < 0.01:
+            chain = chain[1:]
 
     if len(chain) >= 4:
         result[f"{side}_thigh_bone"] = chain[0].name
