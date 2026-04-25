@@ -68,11 +68,13 @@ def _find_spine_chain(bones):
         center = sorted(bones, key=lambda b: abs(b.head_local.x))[:5]
 
     # The head bone has bilateral children (both +X and -X sides: eyes, jaw, etc.)
+    # Score by Z position + children bonus (head typically has many more children than jaw/eye)
     bilateral = [b for b in center
                  if any(c.head_local.x > 0.01 for c in b.children)
                  and any(c.head_local.x < -0.01 for c in b.children)]
     if bilateral:
-        top = max(bilateral, key=lambda b: b.head_local.z)
+        top = max(bilateral,
+                  key=lambda b: b.head_local.z + 0.01 * min(len(b.children), 50))
     else:
         with_ch = [b for b in center if b.children]
         top = max(with_ch or center, key=lambda b: b.head_local.z)
@@ -353,6 +355,11 @@ def _identify_fingers(hand_bone, is_left, result):
 
     if len(chains) < 2:
         return
+
+    # Strip leading carpal bones (4+ bone chain where first bone is a pass-through)
+    for i, ch in enumerate(chains):
+        if len(ch) >= 4:
+            chains[i] = ch[1:]
 
     side = "left" if is_left else "right"
 
