@@ -214,6 +214,7 @@ def test_inase():
         "all_parents_bone": "root ground",
         "center_bone": "root hips",
         "upper_body_bone": "spine lower",
+        "upper_body1_bone": "spine middle",
         "upper_body2_bone": "spine upper",
         "neck_bone": "head neck lower",
         "head_bone": "head neck upper",

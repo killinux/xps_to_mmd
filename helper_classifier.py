@@ -34,7 +34,8 @@ def classify_helpers(armature_data, skeleton_map):
     thigh_names = {skeleton_map.get("left_thigh_bone", ""),
                    skeleton_map.get("right_thigh_bone", "")} - {""}
     spine_names = {skeleton_map.get(k, "") for k in (
-        "upper_body_bone", "upper_body2_bone", "upper_body3_bone")} - {""}
+        "upper_body_bone", "upper_body1_bone", "upper_body2_bone",
+        "upper_body3_bone")} - {""}
 
     head_name = skeleton_map.get("head_bone", "")
     hand_names = {skeleton_map.get("left_hand_bone", ""),

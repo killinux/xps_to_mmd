@@ -100,6 +100,7 @@ def test_inase_helpers():
         "_shadow_test": "ignore",
         "root ground": "mapped",
         "root hips": "mapped",
+        "spine middle": "mapped",
         "arm left shoulder 1": "mapped",
         "head neck upper": "mapped",
     }

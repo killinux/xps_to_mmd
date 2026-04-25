@@ -307,7 +307,8 @@ class OBJECT_OT_complete_missing_bones(bpy.types.Operator):
                 "parent": "上半身", "use_connect": False
             }
 
-        # 上半身1 自动补全: 上半身 と 上半身2 の間
+        # 上半身1: rename 済み (spine middle → 上半身1) なら親子だけ修正、
+        #          無ければ自動補完 + 権重 split
         upper1_just_created = False
         if (edit_bones.get("上半身") and edit_bones.get("上半身2")
                 and not edit_bones.get("上半身1")):
@@ -323,6 +324,16 @@ class OBJECT_OT_complete_missing_bones(bpy.types.Operator):
                 }
                 bone_properties["上半身2"]["parent"] = "上半身1"
                 upper1_just_created = True
+        elif (edit_bones.get("上半身1") and edit_bones.get("上半身")
+                and edit_bones.get("上半身2")):
+            eb1 = edit_bones["上半身1"]
+            bone_properties["上半身1"] = {
+                "head": Vector((0, eb1.head.y, eb1.head.z)),
+                "tail": bone_properties["上半身2"]["head"].copy(),
+                "parent": "上半身", "use_connect": False, "use_deform": True,
+            }
+            bone_properties["上半身"]["tail"] = bone_properties["上半身1"]["head"].copy()
+            bone_properties["上半身2"]["parent"] = "上半身1"
 
         # 上半身3 自动補全: 上半身2 と 首 の間
         upper3_just_created = False

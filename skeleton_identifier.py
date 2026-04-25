@@ -205,6 +205,8 @@ def _map_spine(chain, leg_idx, arm_idx, result):
 
     if len(spine_seg) >= 1:
         result["upper_body_bone"] = spine_seg[0].name
+    if len(spine_seg) >= 2:
+        result["upper_body1_bone"] = spine_seg[1].name
     # arm fork bone = upper_body2 (chest level)
     result["upper_body2_bone"] = chain[arm_idx_eff].name
 
@@ -546,6 +548,7 @@ def _empty_result():
         "groove_bone": "",
         "hip_bone": "",
         "upper_body_bone": "",
+        "upper_body1_bone": "",
         "upper_body2_bone": "",
         "upper_body3_bone": "",
         "neck_bone": "",

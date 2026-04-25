@@ -4,6 +4,7 @@ mmd_bone_map = {
     "groove_bone": "グルーブ",
     "hip_bone": "腰",
     "upper_body_bone": "上半身",
+    "upper_body1_bone": "上半身1",
     "upper_body2_bone": "上半身2",
     "upper_body3_bone": "上半身3",
     "neck_bone": "首",
