@@ -110,12 +110,8 @@ for r in roots:
 ### 8. 拖动时间轴观察差异
 
 ```python
-# VMD 关键帧从 frame 1 开始（不是 0），先把 scene 起点对齐
-bpy.context.scene.frame_start = 1
-bpy.context.scene.frame_set(1)  # 或 80 等动作明显的帧
+bpy.context.scene.frame_set(80)  # 或其他动作明显的帧
 ```
-
-⚠ **VMD 文件的关键帧通常从 frame 1 开始**，frame 0 没有关键帧（显示的是 rest pose 或插值）。MMD 标准就是这样。如果想从头播放，确保 `scene.frame_start = 1`。
 
 可截图渲染对比（front view + view_selected）：
 ```python
