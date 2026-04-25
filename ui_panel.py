@@ -205,6 +205,7 @@ class OBJECT_PT_skeleton_hierarchy(bpy.types.Panel):
             # 新增 EnumProperty 下拉菜单
             row = layout.row()
             row.prop(scene, "xps_preset_enum", text="")
+            row.operator("object.xps_auto_identify_skeleton", text="Auto", icon='BONE_DATA')
         
             main_col = layout.column(align=True)
             # 全ての親到腰部分
