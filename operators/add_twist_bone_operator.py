@@ -360,7 +360,6 @@ class OBJECT_OT_add_twist_bone(bpy.types.Operator):
                         if t < DEAD_ZONE:
                             continue
                         t = max(0.0, min(1.0, t))
-                        # bracket
                         n_lo, n_hi, k = anchors[0][1], anchors[-1][1], 1.0
                         for ai in range(len(anchors) - 1):
                             t_lo, name_lo = anchors[ai]
@@ -372,9 +371,9 @@ class OBJECT_OT_add_twist_bone(bpy.types.Operator):
                                 break
                         w_lo = src_w * (1.0 - k)
                         w_hi = src_w * k
-                        plans.append((v.index, n_lo, w_lo, n_hi, w_hi, existing))
+                        plans.append((v.index, n_lo, w_lo, n_hi, w_hi, existing, t, src_w))
 
-                    for v_idx, n_lo, w_lo, n_hi, w_hi, existing in plans:
+                    for v_idx, n_lo, w_lo, n_hi, w_hi, existing, t, orig_w in plans:
                         if n_lo == source_name:
                             if w_lo > 0:
                                 vgs[n_lo].add([v_idx], w_lo, 'REPLACE')
@@ -385,7 +384,11 @@ class OBJECT_OT_add_twist_bone(bpy.types.Operator):
                         if w_hi > 0:
                             vgs[n_hi].add([v_idx], existing.get(n_hi, 0.0) + w_hi, 'REPLACE')
                         if n_lo != source_name:
-                            src_vg.remove([v_idx])
+                            retain = orig_w * max(0.0, 1.0 - t)
+                            if retain > 0.01:
+                                src_vg.add([v_idx], retain, 'REPLACE')
+                            else:
+                                src_vg.remove([v_idx])
                         total_split += 1
 
                 if total_split > 0:
