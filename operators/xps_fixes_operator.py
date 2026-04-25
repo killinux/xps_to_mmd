@@ -889,7 +889,7 @@ class OBJECT_OT_fix_bone_visibility(bpy.types.Operator):
             if should_hide and not bone.hide:
                 bone.hide = True
                 hidden.append(bone.name)
-            elif not should_hide and bone.hide:
+            elif bone.hide and is_slave and self._is_d_bone(bone.name):
                 bone.hide = False
                 shown.append(bone.name)
 
