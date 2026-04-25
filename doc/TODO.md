@@ -35,6 +35,13 @@
 - **现象**: target 有首1 (2595 verts, parent=首)，位于首と頭之间
 - **修复方向**: 类似上半身1，用 `_split_chain_weights` 从首 split
 
+### [中] spine middle → 上半身1 直接 rename（保留 XPS 原始权重）
+- **日期**: 2026-04-25 尝试+回退
+- **现象**: 当前方案先把 spine middle 在 step 1.4 per-vertex-nearest 散掉（4254 verts），再在 step 2 用 `_split_chain_weights` 从上半身 split 创建上半身1（5842 verts）。理想方案是直接 rename spine middle → 上半身1，保留 XPS 原始权重
+- **已尝试**: 在 STANDARD_MMD_BONES 加 `spine middle` 保护 + complete_bones 里 rename。cascade 失败：第一次 transfer 什么都不做→auto-classifier 第二次失败→twist scanner 抓到面部骨→上半身3 只有 547 verts
+- **修复方向**: 需要重构 pipeline 顺序，把 spine middle→上半身1 的 rename 放到 step 1（rename_to_mmd）里执行，而不是 step 2（complete_bones）。这样 step 1.4 transfer 时 spine middle 已经是上半身1（在白名单里），不会被散掉
+- **工作量**: 中等。需要在 rename_to_mmd 中加 spine middle 的特殊处理逻辑，或在 skeleton_identifier 中识别 spine middle 为 上半身1 候选
+
 ### [低] 胸部骨骼映射 (boob → 乳奶)
 - **日期**: 2026-04-25 发现
 - **现象**: auto 用 `boob left/right 1/2` (XPS 原名)，target 用 `乳奶.L/.R`
