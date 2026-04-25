@@ -36,6 +36,10 @@ def classify_helpers(armature_data, skeleton_map):
     spine_names = {skeleton_map.get(k, "") for k in (
         "upper_body_bone", "upper_body2_bone", "upper_body3_bone")} - {""}
 
+    head_name = skeleton_map.get("head_bone", "")
+    hand_names = {skeleton_map.get("left_hand_bone", ""),
+                  skeleton_map.get("right_hand_bone", "")} - {""}
+
     result = {}
     for bone in bones:
         name = bone.name
@@ -46,14 +50,28 @@ def classify_helpers(armature_data, skeleton_map):
             result[name] = "ignore"
             continue
 
+        # Head descendants (hair/face) — before segment check to avoid
+        # hair near arms being classified as twist
+        if head_name and _is_descendant_of(bone, head_name):
+            result[name] = "other"
+            continue
+
+        # Hand descendants (carpals, extra finger bones)
+        if hand_names and _is_descendant_of_any(bone, hand_names):
+            result[name] = "other"
+            continue
+
         ancestor = _find_mapped_ancestor(bone, mapped)
 
-        # Pelvis/hip area first (before segment check, since pelvis is near thigh start)
+        # Pelvis: DIRECT child of center, centered
         if ancestor == center_name and center_name:
-            if abs(bone.head_local.x) < 0.02:
+            is_direct = bone.parent and bone.parent.name == center_name
+            if is_direct and abs(bone.head_local.x) < 0.02:
                 result[name] = "pelvis"
-            else:
+            elif abs(bone.head_local.x) >= 0.02:
                 result[name] = "preserve"
+            else:
+                result[name] = "other"
             continue
 
         seg_type = _closest_segment_type(bone, segments)
@@ -67,7 +85,7 @@ def classify_helpers(armature_data, skeleton_map):
         if ancestor in thigh_names:
             result[name] = "preserve"
             continue
-        if ancestor in spine_names:
+        if ancestor in spine_names and abs(bone.head_local.x) >= 0.02:
             result[name] = "preserve"
             continue
 
@@ -154,3 +172,23 @@ def _find_mapped_ancestor(bone, mapped_names):
             return cur.name
         cur = cur.parent
     return None
+
+
+def _is_descendant_of(bone, ancestor_name):
+    """Check if bone is a descendant of the named bone."""
+    cur = bone.parent
+    while cur:
+        if cur.name == ancestor_name:
+            return True
+        cur = cur.parent
+    return False
+
+
+def _is_descendant_of_any(bone, ancestor_names):
+    """Check if bone is a descendant of any of the named bones."""
+    cur = bone.parent
+    while cur:
+        if cur.name in ancestor_names:
+            return True
+        cur = cur.parent
+    return False
