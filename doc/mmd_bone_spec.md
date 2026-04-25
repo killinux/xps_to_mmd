@@ -161,18 +161,38 @@ Auto 不需要显式 TRANSFORM（用 mmd_bone 属性代替，`apply_additional_t
 
 ---
 
-## 5. 肩P 骨
+## 5. 肩P / 肩C 骨
 
-让肩跟随上半身3旋转但有独立控制。
+肩P 让肩有独立于上半身3 的控制。肩C 让肩跟随肩P 旋转。
 
-| 骨骼 | parent | use_deform | constraint | 付与親 |
-|------|--------|-----------|-----------|-------|
-| 左肩P/右肩P | 上半身3 | True | 无 | 无 |
+| 骨骼 | parent | use_deform | 権重 | constraint | 付与親 |
+|------|--------|-----------|------|-----------|-------|
+| 左肩P/右肩P | 上半身3 | True | 0 | 无 | 无 |
+| 左肩C/右肩C | 左肩/右肩 | True | 0 | TRANSFORM→_shadow_肩C (ADD) | rot→肩P |
+
+**parent chain**:
+```
+上半身3
+  └─ 肩P  (VMD 驱动, 独立控制肩旋转)
+       └─ 肩  (主変形骨, 有権重)
+            └─ 肩C  (付与親→肩P, 让肩跟随肩P 旋转)
+                 └─ 腕  → ひじ → 手首
+```
 
 **要点**：
-- 肩P 是肩的 parent（肩P → 肩 → 腕）
-- use_deform=True 但通常权重为 0（肩承担変形）
-- 无 constraint、无付与親
+- 肩P 和 肩C 都是 0 権重（肩承担変形）
+- 肩C 由 `apply_additional_transform` 自动创建，pipeline 中不需要手动创建
+- 肩C 的付与親 target=肩P，使肩的 child chain 跟随 肩P 旋转
+- _dummy_肩C parent=肩P, _shadow_肩C parent=上半身3
+
+### ダミー骨
+
+mmd_tools 创建的占位骨。
+
+| 骨骼 | parent | use_deform | 権重 | 说明 |
+|------|--------|-----------|------|------|
+| ダミー.L/.R | 手首 | True | 0 | 手首 placeholder，无实际功能 |
+| 操作中心 | None | True | 0 | UI 操作辅助骨 |
 
 ---
 
