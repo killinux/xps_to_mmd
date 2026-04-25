@@ -350,6 +350,14 @@ class OBJECT_OT_complete_missing_bones(bpy.types.Operator):
                 if parent_bone and edit_bones[bone_name].parent != parent_bone:
                     edit_bones[bone_name].parent = parent_bone
 
+        # unused bip001 pelvis → reparent to 下半身
+        # XPS pelvis helper 骨 (xtra08 等) parent 在 pelvis→センター 链上，
+        # 需要挂到 下半身 才能跟随下半身旋转
+        pelvis_bone = edit_bones.get("unused bip001 pelvis")
+        lower_body = edit_bones.get("下半身")
+        if pelvis_bone and lower_body:
+            pelvis_bone.parent = lower_body
+
         # 调用函数设置 roll 値
         bone_utils.set_roll_values(edit_bones, bone_utils.DEFAULT_ROLL_VALUES)
 
