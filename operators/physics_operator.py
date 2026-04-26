@@ -41,8 +41,10 @@ DEFAULT_DAMP = 0.5
 DEFAULT_FRICTION = 0.5
 DEFAULT_BOUNCE = 0.0
 JOINT_ROT_LIMIT_DEG = 10.0
-BREAST_JOINT_ROT_DEG = 5.0
-BREAST_SPRING_ANGULAR = 2000.0
+BREAST_JOINT_ROT_X_DEG = 10.0
+BREAST_JOINT_ROT_Y_DEG = 3.0
+BREAST_JOINT_ROT_Z_DEG = 5.0
+BREAST_SPRING_ANGULAR = 100.0
 
 # Naming prefixes for repeat-run cleanup
 PREFIX_BODY = "auto_rb_body_"
@@ -567,14 +569,14 @@ class OBJECT_OT_generate_breast_physics(bpy.types.Operator):
                     location=mid,
                     rotation=rot,
                     size=size,
-                    dynamics_type=MODE_DYNAMIC_BONE,
+                    dynamics_type=MODE_DYNAMIC,
                     collision_group_number=2,
                     collision_group_mask=_mask_only_self(2),
                     name=name,
                     name_e=b.name,
                     bone=b.name,
                     friction=0.0,
-                    mass=0.5,
+                    mass=1.0,
                     angular_damping=0.5,
                     linear_damping=0.5,
                     bounce=0.0,
@@ -585,15 +587,22 @@ class OBJECT_OT_generate_breast_physics(bpy.types.Operator):
                 continue
 
             try:
-                _create_joint_between(
-                    model,
+                rx = math.radians(BREAST_JOINT_ROT_X_DEG)
+                ry = math.radians(BREAST_JOINT_ROT_Y_DEG)
+                rz = math.radians(BREAST_JOINT_ROT_Z_DEG)
+                model.createJoint(
                     name=f"{PREFIX_BREAST}{b.name}",
+                    name_e=b.name,
+                    location=head_w,
+                    rotation=rot,
                     rigid_a=anchor_rb,
                     rigid_b=rb,
-                    loc=head_w,
-                    rot=rot,
-                    max_rot_deg=BREAST_JOINT_ROT_DEG,
-                    spring_angular=BREAST_SPRING_ANGULAR,
+                    maximum_location=(0, 0, 0),
+                    minimum_location=(0, 0, 0),
+                    maximum_rotation=(rx, ry, rz),
+                    minimum_rotation=(-rx, -ry, -rz),
+                    spring_angular=(BREAST_SPRING_ANGULAR,) * 3,
+                    spring_linear=(0, 0, 0),
                 )
                 total_jts += 1
             except Exception as e:
